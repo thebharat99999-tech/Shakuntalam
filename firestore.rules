@@ -1,0 +1,329 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation Helper: StudentProfile
+    function isValidStudentProfile(data) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.userId == request.auth.uid &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 80 &&
+             data.targetExam is string && data.targetExam.size() >= 1 && data.targetExam.size() <= 80 &&
+             data.authMethod is string && data.authMethod.size() <= 30 &&
+             (data.authMethod == 'GOOGLE' || data.authMethod == 'PHONE_OTP' || data.authMethod == 'EMAIL_OTP') &&
+             data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 1000000 &&
+             data.testsAttempted is int && data.testsAttempted >= 0 && data.testsAttempted <= 100000 &&
+             data.averageAccuracy is int && data.averageAccuracy >= 0 && data.averageAccuracy <= 100 &&
+             data.streakDays is int && data.streakDays >= 0 && data.streakDays <= 10000 &&
+             data.accountSetupCompleted is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Helper: TestAttemptRecord
+    function isValidTestAttemptRecord(data, parentUserId) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.userId == request.auth.uid &&
+             data.userId == parentUserId &&
+             data.testId is string && data.testId.size() >= 1 && data.testId.size() <= 120 &&
+             data.testTitle is string && data.testTitle.size() >= 1 && data.testTitle.size() <= 200 &&
+             data.examCategory is string && data.examCategory.size() >= 1 && data.examCategory.size() <= 80 &&
+             data.score is int && data.score >= -1000 && data.score <= 10000 &&
+             data.totalQuestions is int && data.totalQuestions >= 1 && data.totalQuestions <= 500 &&
+             data.accuracyPercent is int && data.accuracyPercent >= 0 && data.accuracyPercent <= 100 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Helper: QuizTestDocument
+    function isValidQuizTestDocument(data, parentUserId) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.userId == request.auth.uid &&
+             data.userId == parentUserId &&
+             data.testId is string && data.testId.size() >= 1 && data.testId.size() <= 120 &&
+             data.examKey is string && data.examKey.size() >= 1 && data.examKey.size() <= 60 &&
+             data.titleEn is string && data.titleEn.size() >= 1 && data.titleEn.size() <= 200 &&
+             data.titleHi is string && data.titleHi.size() >= 1 && data.titleHi.size() <= 200 &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 360 &&
+             data.totalMarks is int && data.totalMarks >= 1 && data.totalMarks <= 2000 &&
+             data.questionCount is int && data.questionCount >= 1 && data.questionCount <= 500 &&
+             data.paidOnly is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Helper: UserSubscription
+    function isValidUserSubscription(data, docUserId) {
+      return data.userId is string && isValidId(data.userId) &&
+             data.userId == request.auth.uid &&
+             data.userId == docUserId &&
+             data.planCode is string && data.planCode.size() >= 4 && data.planCode.size() <= 30 &&
+             (data.planCode == 'NONE' || data.planCode == 'MONTHLY_9' || data.planCode == 'YEARLY_99' || data.planCode == 'LIFETIME_399') &&
+             data.planName is string && data.planName.size() >= 1 && data.planName.size() <= 120 &&
+             data.priceInr is int &&
+             (data.priceInr == 0 || data.priceInr == 9 || data.priceInr == 99 || data.priceInr == 399) &&
+             data.status is string && data.status.size() >= 6 && data.status.size() <= 20 &&
+             (data.status == 'ACTIVE' || data.status == 'EXPIRED' || data.status == 'CANCELLED') &&
+             data.active is bool &&
+             data.startEpochMillis is int && data.startEpochMillis >= 0 && data.startEpochMillis <= 9999999999999 &&
+             data.expiryEpochMillis is int && data.expiryEpochMillis >= 0 && data.expiryEpochMillis <= 9999999999999 &&
+             data.receiptNumber is string && data.receiptNumber.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Collection: /students/{userId}
+    match /students/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll([
+                         'userId',
+                         'studentName',
+                         'targetExam',
+                         'authMethod',
+                         'totalPoints',
+                         'testsAttempted',
+                         'averageAccuracy',
+                         'streakDays',
+                         'accountSetupCompleted',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'studentName',
+                         'targetExam',
+                         'authMethod',
+                         'totalPoints',
+                         'testsAttempted',
+                         'averageAccuracy',
+                         'streakDays',
+                         'accountSetupCompleted',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       isValidStudentProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidStudentProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         // Action: Complete or update student profile & exam progress
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'studentName',
+                           'targetExam',
+                           'authMethod',
+                           'totalPoints',
+                           'testsAttempted',
+                           'averageAccuracy',
+                           'streakDays',
+                           'accountSetupCompleted',
+                           'updatedAt'
+                         ])
+                       );
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      // Subcollection: /students/{userId}/test_attempts/{attemptId}
+      match /test_attempts/{attemptId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(attemptId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(attemptId) &&
+                         request.auth.uid == userId &&
+                         incoming().keys().hasAll([
+                           'userId',
+                           'testId',
+                           'testTitle',
+                           'examCategory',
+                           'score',
+                           'totalQuestions',
+                           'accuracyPercent',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId',
+                           'testId',
+                           'testTitle',
+                           'examCategory',
+                           'score',
+                           'totalQuestions',
+                           'accuracyPercent',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         isValidTestAttemptRecord(incoming(), userId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(attemptId) &&
+                         request.auth.uid == userId &&
+                         isValidTestAttemptRecord(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().testId == existing().testId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'testTitle',
+                           'examCategory',
+                           'score',
+                           'totalQuestions',
+                           'accuracyPercent',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(attemptId) && request.auth.uid == userId;
+      }
+
+      // Subcollection: /students/{userId}/quiz_tests/{testId}
+      match /quiz_tests/{testId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(testId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(testId) &&
+                         request.auth.uid == userId &&
+                         incoming().keys().hasAll([
+                           'userId',
+                           'testId',
+                           'examKey',
+                           'titleEn',
+                           'titleHi',
+                           'durationMinutes',
+                           'totalMarks',
+                           'questionCount',
+                           'paidOnly',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId',
+                           'testId',
+                           'examKey',
+                           'titleEn',
+                           'titleHi',
+                           'durationMinutes',
+                           'totalMarks',
+                           'questionCount',
+                           'paidOnly',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         isValidQuizTestDocument(incoming(), userId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(testId) &&
+                         request.auth.uid == userId &&
+                         isValidQuizTestDocument(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().testId == existing().testId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'examKey',
+                           'titleEn',
+                           'titleHi',
+                           'durationMinutes',
+                           'totalMarks',
+                           'questionCount',
+                           'paidOnly',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(testId) && request.auth.uid == userId;
+      }
+    }
+
+    // Collection: /subscriptions/{userId}
+    match /subscriptions/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll([
+                         'userId',
+                         'planCode',
+                         'planName',
+                         'priceInr',
+                         'status',
+                         'active',
+                         'startEpochMillis',
+                         'expiryEpochMillis',
+                         'receiptNumber',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'planCode',
+                         'planName',
+                         'priceInr',
+                         'status',
+                         'active',
+                         'startEpochMillis',
+                         'expiryEpochMillis',
+                         'receiptNumber',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       isValidUserSubscription(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserSubscription(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         // Action: Activate, renew, or expire user subscription
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'planCode',
+                           'planName',
+                           'priceInr',
+                           'status',
+                           'active',
+                           'startEpochMillis',
+                           'expiryEpochMillis',
+                           'receiptNumber',
+                           'updatedAt'
+                         ])
+                       );
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+  }
+}

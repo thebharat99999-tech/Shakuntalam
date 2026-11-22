@@ -1,0 +1,6 @@
+{
+  "name": "Shakuntalam",
+  "description": "Premier Indian competitive exam e-books & test series platform for UPSC, State PSCs, SSC, Railways, Banking, Teaching, NEET, JEE & CBSE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

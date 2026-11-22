@@ -1,0 +1,287 @@
+{
+  "entities": {
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "Authenticated student profile, onboarding state (Student Name and Target Exam), and aggregated progress tracker metrics.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the student owner."
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Full name entered by the student on the dashboard setup."
+        },
+        "targetExam": {
+          "type": "string",
+          "description": "Primary competitive exam the student is preparing for (e.g., IIT JEE, NEET UG, UGC NET, CTET / TET)."
+        },
+        "authMethod": {
+          "type": "string",
+          "enum": ["GOOGLE", "PHONE_OTP", "EMAIL_OTP"],
+          "description": "Authentication method used by the student."
+        },
+        "totalPoints": {
+          "type": "integer",
+          "description": "Total XP / score points earned across quizzes and mock tests."
+        },
+        "testsAttempted": {
+          "type": "integer",
+          "description": "Total number of mock tests completed by the student."
+        },
+        "averageAccuracy": {
+          "type": "integer",
+          "description": "Overall accuracy percentage (0 to 100) across attempted tests."
+        },
+        "streakDays": {
+          "type": "integer",
+          "description": "Current consecutive daily quiz streak count."
+        },
+        "accountSetupCompleted": {
+          "type": "boolean",
+          "description": "Whether the student has completed the 2-field dashboard onboarding (Student Name + Target Exam)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the student profile was created. Clients must submit FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the student profile was last updated. Clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "studentName",
+        "targetExam",
+        "authMethod",
+        "totalPoints",
+        "testsAttempted",
+        "averageAccuracy",
+        "streakDays",
+        "accountSetupCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TestAttemptRecord": {
+      "title": "TestAttemptRecord",
+      "description": "Individual mock test attempt record stored under a student's profile for progress tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the student who attempted the test."
+        },
+        "testId": {
+          "type": "string",
+          "description": "Identifier of the attempted mock test."
+        },
+        "testTitle": {
+          "type": "string",
+          "description": "Title of the attempted mock test."
+        },
+        "examCategory": {
+          "type": "string",
+          "description": "Exam category of the attempted test (e.g., IIT JEE, NEET, UGC NET, TET)."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Score achieved in the test attempt."
+        },
+        "totalQuestions": {
+          "type": "integer",
+          "description": "Total number of questions in the test."
+        },
+        "accuracyPercent": {
+          "type": "integer",
+          "description": "Accuracy percentage (0 to 100) for this attempt."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the attempt was recorded. Clients must submit FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the attempt record was last updated. Clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "testId",
+        "testTitle",
+        "examCategory",
+        "score",
+        "totalQuestions",
+        "accuracyPercent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "QuizTestDocument": {
+      "title": "QuizTestDocument",
+      "description": "Firestore quiz test metadata and configuration fetched by QuizViewModel for multi-choice quizzes.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the student accessing or syncing the quiz test."
+        },
+        "testId": {
+          "type": "string",
+          "description": "Unique identifier of the quiz or mock test."
+        },
+        "examKey": {
+          "type": "string",
+          "description": "Exam category key (e.g., upsc, up_police, ssc, iit_jee, neet, ugc_net, tet)."
+        },
+        "titleEn": {
+          "type": "string",
+          "description": "English title of the test."
+        },
+        "titleHi": {
+          "type": "string",
+          "description": "Hindi title of the test."
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "description": "Official test duration in minutes."
+        },
+        "totalMarks": {
+          "type": "integer",
+          "description": "Total marks for the test."
+        },
+        "questionCount": {
+          "type": "integer",
+          "description": "Total number of questions in the test."
+        },
+        "paidOnly": {
+          "type": "boolean",
+          "description": "Whether this test belongs to the Paid Test Series section."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the quiz test document was created. Clients must submit FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the quiz test document was last updated. Clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "testId",
+        "examKey",
+        "titleEn",
+        "titleHi",
+        "durationMinutes",
+        "totalMarks",
+        "questionCount",
+        "paidOnly",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserSubscription": {
+      "title": "UserSubscription",
+      "description": "User subscription status stored in Firestore for gating access to Paid Test Series features (Monthly ₹9, Yearly ₹99, or Lifetime ₹399).",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the subscribed user."
+        },
+        "planCode": {
+          "type": "string",
+          "enum": ["NONE", "MONTHLY_9", "YEARLY_99", "LIFETIME_399"],
+          "description": "Subscription plan identifier."
+        },
+        "planName": {
+          "type": "string",
+          "description": "Display name of the subscription plan."
+        },
+        "priceInr": {
+          "type": "integer",
+          "description": "Subscription price in INR (0, 9, 99, or 399)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "EXPIRED", "CANCELLED"],
+          "description": "Lifecycle status of the user's subscription."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the subscription is currently active and unlocks Paid Test Series."
+        },
+        "startEpochMillis": {
+          "type": "integer",
+          "description": "Subscription activation timestamp in epoch milliseconds."
+        },
+        "expiryEpochMillis": {
+          "type": "integer",
+          "description": "Subscription expiration timestamp in epoch milliseconds."
+        },
+        "receiptNumber": {
+          "type": "string",
+          "description": "Payment transaction receipt identifier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the subscription record was created. Clients must submit FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the subscription record was last updated. Clients must submit FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "planCode",
+        "planName",
+        "priceInr",
+        "status",
+        "active",
+        "startEpochMillis",
+        "expiryEpochMillis",
+        "receiptNumber",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/students/{userId}": {
+      "schema": {
+        "$ref": "#/entities/StudentProfile"
+      },
+      "description": "Stores each authenticated student's profile, target exam, and aggregated progress tracker metrics."
+    },
+    "/students/{userId}/test_attempts/{attemptId}": {
+      "schema": {
+        "$ref": "#/entities/TestAttemptRecord"
+      },
+      "description": "Stores user-scoped test attempt history for the student's progress tracker."
+    },
+    "/students/{userId}/quiz_tests/{testId}": {
+      "schema": {
+        "$ref": "#/entities/QuizTestDocument"
+      },
+      "description": "Stores user-scoped quiz test metadata fetched and synchronized by QuizViewModel."
+    },
+    "/subscriptions/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserSubscription"
+      },
+      "description": "Stores each authenticated user's active subscription plan (Monthly ₹9, Yearly ₹99, Lifetime ₹399) to gate access to Paid Test Series features."
+    }
+  }
+}
